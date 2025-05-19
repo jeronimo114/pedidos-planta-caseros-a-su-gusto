@@ -43,9 +43,14 @@ function norm(p) {
   };
 }
 
+// Build a unique key for each product based on name + packaging
+const productKey = (p) => `${p.nombre}|${p.empaqueRot}`;
+
 /* ========= STATE ========= */
 let PRODUCTS = {}; // { categoria: [ {nombre, unidad, …} ] }
 const order = new Map(); // nombre -> { unidad, qty }
+// Track last click timestamp per product to ignore rapid double clicks
+const lastClickTimes = new Map(); // nombre -> ms
 
 /* ========= UI HELPERS ========= */
 function showToast(msg) {
@@ -89,7 +94,8 @@ function renderProducts(cat, filter = "") {
 }
 
 function productCard(p) {
-  const qty = order.get(p.nombre)?.qty || 0;
+  const qty = order.get(productKey(p))?.qty || 0;
+  const key = productKey(p);
   const card = document.createElement("div");
   card.className = "card";
   card.innerHTML = `
@@ -102,51 +108,87 @@ function productCard(p) {
      </div>
   `;
   const [minusBtn, , plusBtn] = card.querySelectorAll(".qty-btn, span");
-  plusBtn.addEventListener("click", () => {
-    const curr = order.get(p.nombre)?.qty || 0;
-    order.set(p.nombre, {
-      unidad: p.unidad || "",
-      empaqueRot: p.empaqueRot || "",
-      qty: curr + 1,
-    });
-    updateCard(card, p.nombre);
-    updateCart();
-  });
-  minusBtn.addEventListener("click", () => {
-    const curr = order.get(p.nombre)?.qty || 0;
-    if (curr > 0) {
-      if (curr === 1) order.delete(p.nombre);
-      else
-        order.set(p.nombre, {
-          unidad: p.unidad || "",
-          empaqueRot: p.empaqueRot || "",
-          qty: curr - 1,
-        });
-      updateCard(card, p.nombre);
+  // Attach once: prevent multiple listeners on the same element
+  if (!plusBtn.dataset.boundPlus) {
+    plusBtn.dataset.boundPlus = "true";
+
+    // Single‑click handler with a short lock to avoid accidental double increments
+    plusBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const now = performance.now();
+      const last = lastClickTimes.get(key) || 0;
+      if (now - last < 300) {
+        console.log(
+          `[IGNORED] Duplicate click on ${p.nombre} – ${(now - last).toFixed(
+            1
+          )} ms apart`
+        );
+        return;
+      }
+      lastClickTimes.set(key, now);
+
+      const nowLog = performance.now();
+      console.log(`[CLICK +] ${p.nombre} @ ${nowLog.toFixed(2)} ms`);
+
+      const curr = order.get(key)?.qty || 0;
+      console.log(`[STATE] ${p.nombre}: ${curr} → ${curr + 1}`);
+
+      order.set(key, {
+        nombre: p.nombre,
+        unidad: p.unidad || "",
+        empaqueRot: p.empaqueRot || "",
+        qty: curr + 1,
+      });
+      updateCard(card, key);
       updateCart();
-    }
-  });
+    });
+  }
+  if (!minusBtn.dataset.boundMinus) {
+    minusBtn.dataset.boundMinus = "true";
+    minusBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const now = performance.now();
+      const last = lastClickTimes.get(key) || 0;
+      if (now - last < 300) return; // ignore ultra‑fast repeats
+      lastClickTimes.set(key, now);
+
+      console.log(`[CLICK -] ${p.nombre}`);
+      const curr = order.get(key)?.qty || 0;
+      if (curr > 0) {
+        if (curr === 1) order.delete(key);
+        else
+          order.set(key, {
+            nombre: p.nombre,
+            unidad: p.unidad || "",
+            empaqueRot: p.empaqueRot || "",
+            qty: curr - 1,
+          });
+        updateCard(card, key);
+        updateCart();
+      }
+    });
+  }
   return card;
 }
 
-function updateCard(card, nombre) {
+function updateCard(card, key) {
   const span = card.querySelector("span");
-  span.textContent = order.get(nombre)?.qty || 0;
+  span.textContent = order.get(key)?.qty || 0;
 }
 function updateCart() {
   cartList.innerHTML = "";
-  order.forEach((val, nombre) => {
+  order.forEach((val, key) => {
     const li = document.createElement("li");
     li.innerHTML = `
       <span>
-        <strong>${nombre}</strong>
+        <strong>${val.nombre}</strong>
         <div style="font-size:0.85rem;color:var(--muted);margin:0.25rem 0;">${val.empaqueRot}</div>
         <span style="color:var(--muted)">x${val.qty}</span>
       </span>
       <button aria-label="Quitar">&times;</button>
     `;
     li.querySelector("button").onclick = () => {
-      order.delete(nombre);
+      order.delete(key);
       updateCart();
     };
     cartList.appendChild(li);
