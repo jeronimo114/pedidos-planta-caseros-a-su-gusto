@@ -17,7 +17,7 @@ async function getProducts() {
   const sheets = google.sheets({ version: "v4", auth: client });
 
   const spreadsheetId = process.env.MASTER_SPREADSHEET_ID;
-  const range = "Punto_Lista_pedidos_a_planta!B:H"; // Reads whole block
+  const range = "Punto_Lista_pedidos_a_planta!B:I"; // Include column I for rotulado
 
   const { data } = await sheets.spreadsheets.values.get({
     spreadsheetId,
@@ -31,13 +31,14 @@ async function getProducts() {
 
   for (const row of rows) {
     const [
-      producto /* C */,
+      producto /* B */,
       ,
-      empaquePrimario,
-      unidad,
-      dosis,
-      porciones,
-      cantidadEmpaque,
+      empaquePrimario, // D
+      unidad, // E
+      dosis, // F
+      porciones, // G
+      cantidadEmpaque, // H
+      unidadEmpaqueRotulado, // I
     ] = row;
 
     // Row marks the start of a category when Producto has text and the empaquePrimario column is blank.
@@ -56,6 +57,7 @@ async function getProducts() {
         dosis: Number(dosis) || null,
         porcionesPorEmpaque: Number(porciones) || null,
         cantidadPorEmpaque: Number(cantidadEmpaque) || null,
+        unidadEmpaqueRotulado: unidadEmpaqueRotulado || "",
       });
     }
   }

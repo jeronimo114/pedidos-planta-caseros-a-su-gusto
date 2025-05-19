@@ -83,13 +83,16 @@
         font-weight: 600;
       }
 
-      /* Sede selector (segmented) */
+      /* Sede selector (responsive segmented control) */
       .segmented {
-        display: inline-flex;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
         border: 1px solid #d1d1d6;
         border-radius: var(--radius);
-        overflow: hidden;
-        margin: 1rem 0;
+        padding: 0.25rem;
+        overflow-x: auto; /* allow horizontal scroll if needed */
+        -webkit-overflow-scrolling: touch;
       }
       .segmented input {
         display: none;
@@ -100,7 +103,6 @@
         transition: background 0.15s;
         font-size: 0.85rem;
         user-select: none;
-        white-space: nowrap;
       }
       .segmented input:checked + label {
         background: var(--brand);
@@ -179,6 +181,8 @@
         flex-direction: column;
         gap: 0.75rem;
         z-index: 10;
+        max-height: 40vh; /* limit height to viewport */
+        overflow-y: auto; /* scroll when too tall */
       }
       /* Ensure content scrolls above the sticky cart */
       .grid {

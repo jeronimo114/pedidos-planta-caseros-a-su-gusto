@@ -80,7 +80,6 @@ function productCard(p) {
   card.innerHTML = `
      <h4>${p.nombre}</h4>
      <div class="chip">${p.empaqueRot}</div>
-     <div class="chip" style="margin-top:-.25rem;color:var(--muted)">${p.unidad}</div>
      <div class="controls">
        <button class="qty-btn minus" aria-label="Restar"><i class="fa-solid fa-minus"></i></button>
        <span>${qty}</span>
@@ -90,7 +89,11 @@ function productCard(p) {
   const [minusBtn, , plusBtn] = card.querySelectorAll(".qty-btn, span");
   plusBtn.addEventListener("click", () => {
     const curr = order.get(p.nombre)?.qty || 0;
-    order.set(p.nombre, { unidad: p.unidad || "", qty: curr + 1 });
+    order.set(p.nombre, {
+      unidad: p.unidad || "",
+      empaqueRot: p.empaqueRot || "",
+      qty: curr + 1,
+    });
     updateCard(card, p.nombre);
     updateCart();
   });
@@ -98,7 +101,12 @@ function productCard(p) {
     const curr = order.get(p.nombre)?.qty || 0;
     if (curr > 0) {
       if (curr === 1) order.delete(p.nombre);
-      else order.set(p.nombre, { unidad: p.unidad || "", qty: curr - 1 });
+      else
+        order.set(p.nombre, {
+          unidad: p.unidad || "",
+          empaqueRot: p.empaqueRot || "",
+          qty: curr - 1,
+        });
       updateCard(card, p.nombre);
       updateCart();
     }
@@ -115,7 +123,11 @@ function updateCart() {
   order.forEach((val, nombre) => {
     const li = document.createElement("li");
     li.innerHTML = `
-      <span>${nombre} <span style="color:var(--muted)">x${val.qty}</span></span>
+      <span>
+        <strong>${nombre}</strong>
+        <div style="font-size:0.85rem;color:var(--muted);margin:0.25rem 0;">${val.empaqueRot}</div>
+        <span style="color:var(--muted)">x${val.qty}</span>
+      </span>
       <button aria-label="Quitar">&times;</button>
     `;
     li.querySelector("button").onclick = () => {
