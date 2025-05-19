@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Caseros – Pedido a planta</title>
+    <title>Caseros a Su Gusto – Pedido a planta</title>
 
     <!-- Icons -->
     <link
@@ -283,9 +283,9 @@
 
     <dialog id="toast"></dialog>
 
-    <!-- Signature Section -->
+    <!-- Name Section -->
     <div
-      id="signatureSection"
+      id="nameSection"
       style="
         display: none;
         margin-top: 2rem;
@@ -303,7 +303,6 @@
           type="text"
           id="userName"
           placeholder="Ingrese su nombre"
-          required
           style="
             width: 100%;
             padding: 0.75rem;
@@ -312,44 +311,19 @@
           "
         />
       </div>
-      <div style="margin-bottom: 1rem">
-        <label style="display: block; margin-bottom: 0.5rem">Firma</label>
-        <canvas
-          id="signatureCanvas"
-          style="
-            border: 1px solid #d1d1d6;
-            border-radius: var(--radius);
-            touch-action: none;
-          "
-        ></canvas>
-      </div>
-      <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem">
-        <button
-          id="clearSignatureBtn"
-          style="
-            padding: 0.5rem 1rem;
-            background: #d1d1d6;
-            border: none;
-            border-radius: var(--radius);
-            cursor: pointer;
-          "
-        >
-          Limpiar
-        </button>
-        <button
-          id="confirmSignatureBtn"
-          style="
-            padding: 0.5rem 1rem;
-            background: var(--brand);
-            color: white;
-            border: none;
-            border-radius: var(--radius);
-            cursor: pointer;
-          "
-        >
-          Confirmar
-        </button>
-      </div>
+      <button
+        id="confirmNameBtn"
+        style="
+          padding: 0.65rem 1rem;
+          background: var(--brand);
+          color: #fff;
+          border: none;
+          border-radius: var(--radius);
+          cursor: pointer;
+        "
+      >
+        Confirmar pedido
+      </button>
     </div>
 
     <script src="main.js"></script>
