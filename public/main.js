@@ -6,6 +6,21 @@ const searchBox = document.getElementById("searchBox");
 const cartList = document.getElementById("cartList");
 const submitBtn = document.getElementById("submitBtn");
 const toast = document.getElementById("toast");
+const signatureSection = document.getElementById("signatureSection");
+const signatureCanvas = document.getElementById("signatureCanvas");
+const clearSignatureBtn = document.getElementById("clearSignatureBtn");
+const confirmSignatureBtn = document.getElementById("confirmSignatureBtn");
+const userNameInput = document.getElementById("userName");
+
+// Signature canvas setup
+const ctx = signatureCanvas.getContext("2d");
+let isDrawing = false;
+let lastX = 0;
+let lastY = 0;
+
+// Set canvas size
+signatureCanvas.width = signatureCanvas.offsetWidth;
+signatureCanvas.height = signatureCanvas.offsetHeight;
 
 /* ========= CONSTANTS ========= */
 const SEDE_OPTIONS = [
@@ -182,17 +197,89 @@ backBtn.onclick = () => {
   backBtn.style.display = "none";
   renderCategories(searchBox.value);
 };
+// Signature drawing functions
+function startDrawing(e) {
+  isDrawing = true;
+  [lastX, lastY] = getPosition(e);
+}
+
+function draw(e) {
+  if (!isDrawing) return;
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 2;
+  ctx.lineCap = "round";
+
+  const [x, y] = getPosition(e);
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(x, y);
+  ctx.stroke();
+  [lastX, lastY] = [x, y];
+}
+
+function endDrawing() {
+  isDrawing = false;
+}
+
+function getPosition(e) {
+  const rect = signatureCanvas.getBoundingClientRect();
+  return [
+    (e.clientX || e.touches[0].clientX) - rect.left,
+    (e.clientY || e.touches[0].clientY) - rect.top,
+  ];
+}
+
+// Signature event listeners
+signatureCanvas.addEventListener("mousedown", startDrawing);
+signatureCanvas.addEventListener("mousemove", draw);
+signatureCanvas.addEventListener("mouseup", endDrawing);
+signatureCanvas.addEventListener("mouseleave", endDrawing);
+signatureCanvas.addEventListener("touchstart", startDrawing);
+signatureCanvas.addEventListener("touchmove", draw);
+signatureCanvas.addEventListener("touchend", endDrawing);
+
+clearSignatureBtn.addEventListener("click", () => {
+  ctx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+});
+
 submitBtn.addEventListener("click", () => {
   const sede = document.querySelector("input[name='sede']:checked")?.value;
   if (order.size === 0) return;
+
+  // Show signature section
+  signatureSection.style.display = "block";
+  window.scrollTo({
+    top: signatureSection.offsetTop,
+    behavior: "smooth",
+  });
+});
+
+confirmSignatureBtn.addEventListener("click", () => {
+  if (
+    !userNameInput.value ||
+    signatureCanvas.toDataURL() === signatureCanvas.toDataURL("image/png", 0)
+  ) {
+    showToast("Por favor complete su nombre y firma");
+    return;
+  }
+
+  const sede = document.querySelector("input[name='sede']:checked")?.value;
   const items = [...order].map(([nombre, { qty }]) => ({
     nombre,
     cantidad: qty,
   }));
+
+  const signatureData = signatureCanvas.toDataURL();
+
   fetch("/api/submit-order", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sede, items }),
+    body: JSON.stringify({
+      sede,
+      items,
+      nombre: userNameInput.value,
+      firma: signatureData,
+    }),
   })
     .then((r) => r.json())
     .then((resp) => {
@@ -200,7 +287,12 @@ submitBtn.addEventListener("click", () => {
         showToast("✅ Pedido enviado");
         order.clear();
         updateCart();
-      } else showToast(resp.error || "Error");
+        signatureSection.style.display = "none";
+        ctx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+        userNameInput.value = "";
+      } else {
+        showToast(resp.error || "Error");
+      }
     })
     .catch(() => showToast("Error de red"));
 });

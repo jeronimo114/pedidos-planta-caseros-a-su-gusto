@@ -41,12 +41,15 @@ router.get("/products", async (req, res) => {
 
 // POST /api/submit-order
 router.post("/submit-order", (req, res) => {
-  const { sede, items } = req.body;
+  const { sede, items, nombre, firma } = req.body;
   if (!ALLOWED_SEDES.includes(sede)) {
     return res.status(400).json({ error: "Sede inválida" });
   }
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: "La orden está vacía" });
+  }
+  if (!nombre || !firma) {
+    return res.status(400).json({ error: "Falta nombre o firma" });
   }
 
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -56,10 +59,10 @@ router.post("/submit-order", (req, res) => {
   const filePath = path.join(pedidosDir, filename);
 
   // CSV header & rows
-  const csvRows = [["Producto", "Cantidad"]];
+  const csvRows = [["Producto", "Cantidad", "Nombre Cliente", "Firma"]];
   items.forEach((item) => {
     if (item.nombre && Number(item.cantidad) > 0) {
-      csvRows.push([item.nombre, item.cantidad]);
+      csvRows.push([item.nombre, item.cantidad, nombre, firma]);
     }
   });
 

@@ -283,6 +283,75 @@
 
     <dialog id="toast"></dialog>
 
+    <!-- Signature Section -->
+    <div
+      id="signatureSection"
+      style="
+        display: none;
+        margin-top: 2rem;
+        padding: 1rem;
+        background: var(--card-bg);
+        border-radius: var(--radius);
+      "
+    >
+      <h3 style="margin: 0 0 1rem 0">Confirmación de pedido</h3>
+      <div style="margin-bottom: 1rem">
+        <label for="userName" style="display: block; margin-bottom: 0.5rem"
+          >Nombre completo</label
+        >
+        <input
+          type="text"
+          id="userName"
+          placeholder="Ingrese su nombre"
+          required
+          style="
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d1d6;
+            border-radius: var(--radius);
+          "
+        />
+      </div>
+      <div style="margin-bottom: 1rem">
+        <label style="display: block; margin-bottom: 0.5rem">Firma</label>
+        <canvas
+          id="signatureCanvas"
+          style="
+            border: 1px solid #d1d1d6;
+            border-radius: var(--radius);
+            touch-action: none;
+          "
+        ></canvas>
+      </div>
+      <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem">
+        <button
+          id="clearSignatureBtn"
+          style="
+            padding: 0.5rem 1rem;
+            background: #d1d1d6;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+          "
+        >
+          Limpiar
+        </button>
+        <button
+          id="confirmSignatureBtn"
+          style="
+            padding: 0.5rem 1rem;
+            background: var(--brand);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+          "
+        >
+          Confirmar
+        </button>
+      </div>
+    </div>
+
     <script src="main.js"></script>
   </body>
 </html>
