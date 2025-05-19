@@ -1,32 +1,284 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <title>Caseros – Pedido a planta</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@1.5.10/css/pico.min.css" />
-  <style>
-    body { padding: 2rem; }
-    table input[type="number"] { width: 6rem; }
-    .category { background:#f2f2f2; font-weight:700; }
-  </style>
-</head>
-<body>
-  <h1>Pedido a planta</h1>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Caseros – Pedido a planta</title>
 
-  <label>Sede:
-    <select id="sedeSelect"></select>
-  </label>
+    <!-- Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+      integrity="sha512-..."
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
 
-  <input type="search" id="searchBox" placeholder="Buscar producto…" />
+    <!-- Modern CSS reset -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/modern-css-reset/dist/reset.min.css"
+    />
 
-  <form id="orderForm">
-    <table id="productsTable"></table>
-    <button type="submit">Enviar pedido</button>
-  </form>
+    <style>
+      /* Category & product views */
+      .category-card {
+        cursor: pointer;
+      }
+      .controls {
+        display: flex;
+        gap: 0.4rem;
+        align-items: center;
+        justify-content: flex-end;
+      }
+      .controls .qty-btn {
+        border: none;
+        background: var(--brand);
+        color: #fff;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+      .controls .qty-btn.minus {
+        background: #d1d1d6;
+        color: var(--text);
+      }
+      :root {
+        --brand: #0a84ff; /* apple blue */
+        --brand-dark: #0060df;
+        --bg: #fdfdfd;
+        --card-bg: #ffffff;
+        --text: #1c1c1e;
+        --muted: #6e6e73;
+        --radius: 14px;
+        --shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      }
 
-  <dialog id="toast"></dialog>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 1.5rem;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+      header i {
+        font-size: 1.75rem;
+        color: var(--brand);
+      }
+      h1 {
+        font-size: 1.4rem;
+        font-weight: 600;
+      }
 
-  <script src="main.js"></script>
-</body>
+      /* Sede selector (segmented) */
+      .segmented {
+        display: inline-flex;
+        border: 1px solid #d1d1d6;
+        border-radius: var(--radius);
+        overflow: hidden;
+        margin: 1rem 0;
+      }
+      .segmented input {
+        display: none;
+      }
+      .segmented label {
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        transition: background 0.15s;
+        font-size: 0.85rem;
+        user-select: none;
+        white-space: nowrap;
+      }
+      .segmented input:checked + label {
+        background: var(--brand);
+        color: #fff;
+      }
+      .segmented label:focus-visible {
+        outline: 2px solid var(--brand-dark);
+        outline-offset: -2px;
+      }
+
+      /* Search */
+      #searchBox {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        border: 1px solid #d1d1d6;
+        border-radius: var(--radius);
+        margin: 1rem 0;
+      }
+
+      /* Grid */
+      .grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      }
+      .card {
+        background: var(--card-bg);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-height: 140px;
+      }
+      .card h4 {
+        font-size: 1rem;
+        font-weight: 500;
+        margin: 0;
+        flex: 1;
+      }
+      .chip {
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+      .add-btn {
+        align-self: flex-end;
+        border: none;
+        background: var(--brand);
+        color: #fff;
+        width: 2.2rem;
+        height: 2.2rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 1rem;
+      }
+      .add-btn:focus-visible {
+        outline: 2px solid var(--brand-dark);
+      }
+
+      /* Cart */
+      #cart {
+        position: sticky;
+        bottom: 0;
+        width: 100%;
+        background: var(--card-bg);
+        border-top-left-radius: var(--radius);
+        border-top-right-radius: var(--radius);
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+        padding: 1rem;
+        display: none; /* hidden until items */
+        flex-direction: column;
+        gap: 0.75rem;
+        z-index: 10;
+      }
+      /* Ensure content scrolls above the sticky cart */
+      .grid {
+        padding-bottom: 7rem;
+      }
+      #cart h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+      }
+      #cart ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      #cart li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9rem;
+      }
+      #cart li button {
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 1rem;
+      }
+      #submitBtn {
+        margin-top: 0.5rem;
+        padding: 0.65rem;
+        border: none;
+        border-radius: var(--radius);
+        background: var(--brand);
+        color: #fff;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+      #submitBtn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      /* Toast */
+      dialog#toast {
+        border: none;
+        border-radius: var(--radius);
+        padding: 0.75rem 1.2rem;
+      }
+    </style>
+  </head>
+  <body>
+    <button
+      id="backBtn"
+      aria-label="Volver"
+      style="
+        display: none;
+        background: none;
+        border: none;
+        font-size: 1.25rem;
+        margin-bottom: 0.5rem;
+        color: var(--brand);
+        cursor: pointer;
+      "
+    >
+      <i class="fa-solid fa-arrow-left"></i> Categorías
+    </button>
+    <header>
+      <i class="fa-solid fa-bowl-food"></i>
+      <h1>Caseros – Pedido a planta</h1>
+    </header>
+
+    <section id="sedeSection">
+      <h2 style="font-size: 1rem; font-weight: 500; margin: 0 0 0.25rem 0">
+        Sede
+      </h2>
+      <div class="segmented" id="sedeSegmented"></div>
+    </section>
+
+    <input
+      type="search"
+      id="searchBox"
+      placeholder="Buscar producto…"
+      aria-label="Buscar producto"
+    />
+
+    <section id="productGrid" class="grid" aria-live="polite"></section>
+
+    <!-- Floating cart -->
+    <aside id="cart" aria-label="Resumen de pedido">
+      <h3>Pedido</h3>
+      <ul id="cartList"></ul>
+      <button id="submitBtn" disabled>Enviar pedido</button>
+    </aside>
+
+    <dialog id="toast"></dialog>
+
+    <script src="main.js"></script>
+  </body>
 </html>

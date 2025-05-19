@@ -1,3 +1,13 @@
+let currentCategory = null; // null = showing categories
+/* ========= DOM ========= */
+const sedeSegmented = document.getElementById("sedeSegmented");
+const productGrid = document.getElementById("productGrid");
+const searchBox = document.getElementById("searchBox");
+const cartList = document.getElementById("cartList");
+const submitBtn = document.getElementById("submitBtn");
+const toast = document.getElementById("toast");
+
+/* ========= CONSTANTS ========= */
 const SEDE_OPTIONS = [
   "Punto Clave",
   "Politécnico Jaime Isaza Cadavid",
@@ -6,78 +16,183 @@ const SEDE_OPTIONS = [
   "Centro comercial Bosque Plaza",
 ];
 
-const sedeSelect = document.getElementById("sedeSelect");
-const searchBox = document.getElementById("searchBox");
-const productsTable = document.getElementById("productsTable");
-const orderForm = document.getElementById("orderForm");
-const toast = document.getElementById("toast");
+// map raw → uniform
+function norm(p) {
+  const empaqueRaw =
+    p.unidadEmpaqueRotulado || p.empaqueRotulado || p.unidadEmpaque || "";
+  const auto = p.cantidadUnidad ? `Bolsa por ${p.cantidadUnidad} g` : "";
+  return {
+    ...p,
+    unidad: p.unidad || p.unidadMedida || "",
+    empaqueRot: empaqueRaw || auto,
+  };
+}
 
-SEDE_OPTIONS.forEach((s) => {
-  const opt = document.createElement("option");
-  opt.value = opt.textContent = s;
-  sedeSelect.appendChild(opt);
-});
+/* ========= STATE ========= */
+let PRODUCTS = {}; // { categoria: [ {nombre, unidad, …} ] }
+const order = new Map(); // nombre -> { unidad, qty }
 
+/* ========= UI HELPERS ========= */
 function showToast(msg) {
   toast.textContent = msg;
   toast.showModal();
-  setTimeout(() => toast.close(), 3000);
+  setTimeout(() => toast.close(), 2500);
 }
-
-fetch("/api/products")
-  .then((r) => r.json())
-  .then(renderTable)
-  .catch(() => showToast("Error cargando productos"));
-
-function renderTable(data) {
-  productsTable.innerHTML = "";
-  for (const categoria in data) {
-    const trCat = productsTable.insertRow();
-    const td = trCat.insertCell();
-    td.colSpan = 3;
-    td.textContent = categoria;
-    td.className = "category";
-
-    data[categoria].forEach((prod) => {
-      const row = productsTable.insertRow();
-      const nameCell = row.insertCell();
-      nameCell.textContent = prod.nombre;
-      const qtyCell = row.insertCell();
-      const input = document.createElement("input");
-      input.type = "number";
-      input.min = 0;
-      input.dataset.product = prod.nombre;
-      qtyCell.appendChild(input);
-    });
-  }
-}
-
-// Simple filter
-searchBox.addEventListener("input", () => {
-  const term = searchBox.value.toLowerCase();
-  [...productsTable.rows].forEach((r) => {
-    if (r.classList.contains("category")) return;
-    const show = r.cells[0].textContent.toLowerCase().includes(term);
-    r.style.display = show ? "" : "none";
+function renderSedes() {
+  SEDE_OPTIONS.forEach((s, i) => {
+    const id = `sede-${i}`;
+    sedeSegmented.insertAdjacentHTML(
+      "beforeend",
+      `
+      <input type="radio" name="sede" id="${id}" value="${s}" ${
+        i === 0 ? "checked" : ""
+      }>
+      <label for="${id}">${s}</label>
+    `
+    );
   });
+}
+function renderCategories(filter = "") {
+  productGrid.innerHTML = "";
+  const term = filter.toLowerCase();
+  Object.entries(PRODUCTS).forEach(([cat, items]) => {
+    if (term && !cat.toLowerCase().includes(term)) return;
+    const card = document.createElement("div");
+    card.className = "card category-card";
+    card.innerHTML = `<h4>${cat}</h4><div class="chip">${items.length} productos</div>`;
+    card.onclick = () => openCategory(cat);
+    productGrid.appendChild(card);
+  });
+}
+
+function renderProducts(cat, filter = "") {
+  productGrid.innerHTML = "";
+  const term = filter.toLowerCase();
+  PRODUCTS[cat]
+    .filter((p) => p.nombre.toLowerCase().includes(term))
+    .forEach((p) => productGrid.appendChild(productCard(p)));
+}
+
+function productCard(p) {
+  const qty = order.get(p.nombre)?.qty || 0;
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = `
+     <h4>${p.nombre}</h4>
+     <div class="chip">${p.empaqueRot}</div>
+     <div class="chip" style="margin-top:-.25rem;color:var(--muted)">${p.unidad}</div>
+     <div class="controls">
+       <button class="qty-btn minus" aria-label="Restar"><i class="fa-solid fa-minus"></i></button>
+       <span>${qty}</span>
+       <button class="qty-btn plus" aria-label="Agregar"><i class="fa-solid fa-plus"></i></button>
+     </div>
+  `;
+  const [minusBtn, , plusBtn] = card.querySelectorAll(".qty-btn, span");
+  plusBtn.addEventListener("click", () => {
+    const curr = order.get(p.nombre)?.qty || 0;
+    order.set(p.nombre, { unidad: p.unidad || "", qty: curr + 1 });
+    updateCard(card, p.nombre);
+    updateCart();
+  });
+  minusBtn.addEventListener("click", () => {
+    const curr = order.get(p.nombre)?.qty || 0;
+    if (curr > 0) {
+      if (curr === 1) order.delete(p.nombre);
+      else order.set(p.nombre, { unidad: p.unidad || "", qty: curr - 1 });
+      updateCard(card, p.nombre);
+      updateCart();
+    }
+  });
+  return card;
+}
+
+function updateCard(card, nombre) {
+  const span = card.querySelector("span");
+  span.textContent = order.get(nombre)?.qty || 0;
+}
+function updateCart() {
+  cartList.innerHTML = "";
+  order.forEach((val, nombre) => {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <span>${nombre} <span style="color:var(--muted)">x${val.qty}</span></span>
+      <button aria-label="Quitar">&times;</button>
+    `;
+    li.querySelector("button").onclick = () => {
+      order.delete(nombre);
+      updateCart();
+    };
+    cartList.appendChild(li);
+  });
+  submitBtn.disabled = order.size === 0;
+  const cart = document.getElementById("cart");
+  cart.style.display = order.size ? "flex" : "none";
+}
+
+/* ========= NETWORK ========= */
+function loadProducts() {
+  fetch("/api/products")
+    .then((r) => r.json())
+    .then((data) => {
+      PRODUCTS = data;
+      Object.keys(data).forEach((cat) => {
+        // descartar categoría "SEDE:" y vacías
+        if (cat.trim().toLowerCase() === "sede:") {
+          delete data[cat];
+          return;
+        }
+        data[cat] = data[cat]
+          .map(norm)
+          .filter((p) => !/pedidos a planta|^producto\s*$/i.test(p.nombre));
+      });
+      renderCategories();
+    })
+    .catch(() => showToast("Error cargando productos"));
+}
+
+/* ========= EVENT BINDINGS ========= */
+searchBox.addEventListener("input", (e) => {
+  const term = e.target.value;
+  currentCategory
+    ? renderProducts(currentCategory, term)
+    : renderCategories(term);
 });
+const backBtn = document.getElementById("backBtn");
 
-orderForm.addEventListener("submit", (e) => {
-  e.preventDefault();
-  const sede = sedeSelect.value;
-  const items = [...productsTable.querySelectorAll('input[type="number"]')]
-    .filter((i) => Number(i.value) > 0)
-    .map((i) => ({ nombre: i.dataset.product, cantidad: Number(i.value) }));
-  if (items.length === 0) return showToast("Añade al menos un producto");
+function openCategory(cat) {
+  currentCategory = cat;
+  backBtn.style.display = "inline-flex";
+  renderProducts(cat);
+}
 
+backBtn.onclick = () => {
+  currentCategory = null;
+  backBtn.style.display = "none";
+  renderCategories(searchBox.value);
+};
+submitBtn.addEventListener("click", () => {
+  const sede = document.querySelector("input[name='sede']:checked")?.value;
+  if (order.size === 0) return;
+  const items = [...order].map(([nombre, { qty }]) => ({
+    nombre,
+    cantidad: qty,
+  }));
   fetch("/api/submit-order", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ sede, items }),
   })
     .then((r) => r.json())
-    .then((resp) =>
-      resp.ok ? showToast("✅ Pedido enviado") : showToast(resp.error)
-    )
-    .catch(() => showToast("Error al enviar pedido"));
+    .then((resp) => {
+      if (resp.ok) {
+        showToast("✅ Pedido enviado");
+        order.clear();
+        updateCart();
+      } else showToast(resp.error || "Error");
+    })
+    .catch(() => showToast("Error de red"));
 });
+
+/* ========= INIT ========= */
+renderSedes();
+loadProducts(); // this will call renderCategories after fetch
